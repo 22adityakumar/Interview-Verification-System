@@ -17,8 +17,6 @@ COPY requirements.txt .
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-download the Whisper model to save time during first run
-RUN python -c "import whisper; whisper.load_model('base')"
 
 # Copy the rest of the application code
 COPY . .
