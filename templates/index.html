@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interpreter Watchdog - Audit System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --blue-accent: #3b82f6;
+            --green-accent: #10b981;
+            --red-accent: #ef4444;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --border: #334155;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            font-family: 'Inter', -apple-system, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Header Styles */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .logo { font-size: 1.5rem; font-weight: bold; color: var(--blue-accent); }
+        .session-info { display: flex; gap: 30px; font-size: 0.85rem; color: var(--text-dim); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green-accent); display: inline-block; }
+
+        /* Dashboard Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .monitor-title { display: flex; align-items: center; gap: 12px; }
+        .monitor-title i { font-size: 1.5rem; color: var(--blue-accent); }
+        .id-tag { background: #1e3a8a; font-size: 0.7rem; padding: 4px 10px; border-radius: 20px; color: #93c5fd; }
+
+        /* Controls */
+        .verify-lang { margin: 15px 0; }
+        .lang-select { background: #0f172a; border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 6px; width: 100%; }
+
+        .audio-visualizer {
+            background: #0f172a;
+            height: 60px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            overflow: hidden;
+        }
+
+        .wave-bar {
+            width: 3px;
+            height: 10px;
+            background: var(--blue-accent);
+            border-radius: 3px;
+            transition: 0.1s;
+        }
+
+        .recording .wave-bar { animation: wave 1s infinite alternate; }
+        @keyframes wave { 0% { height: 10px; } 100% { height: 40px; } }
+
+        /* Content Boxes */
+        .content-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
+        .content-box { background: #0f172a; padding: 15px; border-radius: 8px; min-height: 120px; }
+        .box-label { font-size: 0.75rem; color: var(--text-dim); margin-bottom: 10px; display: flex; justify-content: space-between; }
+        .text-content { font-size: 1rem; line-height: 1.5; font-weight: 500; }
+
+        /* Progress Bars */
+        .stats-line { display: flex; justify-content: space-between; margin-top: 15px; font-size: 0.8rem; }
+        .progress-container { flex: 1; height: 6px; background: #334155; border-radius: 10px; margin: 0 10px; align-self: center; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--blue-accent); width: 0%; transition: 0.5s; }
+
+        /* Buttons */
+        .btn-group { display: flex; gap: 10px; margin-top: 25px; }
+        .btn { flex: 1; padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
+        .btn-stop { background: var(--red-accent); color: white; }
+        .btn-reset { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn:active { transform: translateY(0); }
+
+        /* History & Analytics */
+        .bottom-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        .table-container { max-height: 400px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { text-align: left; padding: 12px; color: var(--text-dim); border-bottom: 1px solid var(--border); }
+        td { padding: 12px; border-bottom: 1px solid #1e293b; }
+
+        .analytics-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
+        .stat-item { background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid var(--border); }
+        .stat-val { font-size: 1.2rem; font-weight: bold; margin-bottom: 5px; }
+        .stat-lbl { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; }
+
+        /* Footer Status */
+        .footer-status {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            border: 1px solid var(--border);
+        }
+
+        .timer { font-family: monospace; font-size: 1.1rem; color: var(--text-main); }
+        
+        .card.interviewer .wave-bar { background: var(--blue-accent); }
+        .card.candidate .wave-bar { background: var(--green-accent); }
+        .card.candidate .monitor-title i { color: var(--green-accent); }
+        .card.candidate .progress-fill { background: var(--green-accent); }
+        .card.candidate .id-tag { background: #064e3b; color: #6ee7b7; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-left">
+            <div class="logo"><i class="fas fa-wave-square"></i> Interpreter Watchdog</div>
+            <div class="session-info">
+                <div>Session ID: <span id="sessionId">IWAS-2025-05-11-001</span></div>
+                <div class="timer" id="sessionDuration">00:00:00</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <span class="status-dot"></span> All Systems Operational &nbsp;
+            <button class="btn-reset" onclick="window.location.href='/export_csv'" style="padding: 5px 15px; border-radius: 4px; cursor: pointer; background: var(--blue-accent); color: white; border: none;"><i class="fas fa-download"></i> Export CSV</button>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- Panel: To Interviewer -->
+        <div class="card interviewer" id="panelInterviewer">
+            <div class="card-header">
+                <div class="monitor-title">
+                    <i class="fas fa-user-tie"></i>
+                    <div>
+                        <div style="font-weight: bold;">Monitoring: To Interviewer</div>
+                        <div style="font-size: 0.7rem; color: var(--text-dim);">Verify what the interpreter is telling the interviewer</div>
+                    </div>
+                </div>
+                <div class="id-tag">ID: CH-TO-INT</div>
+            </div>
+
+            <div class="verify-lang">
+                <div style="font-size: 0.75rem; margin-bottom: 8px;">Verify in this language:</div>
+                <select class="lang-select" id="langInterviewer">
+                    <option value="ja">Japanese</option>
+                    <option value="en" selected>English</option>
+                    <option value="hi">Hindi</option>
+                    <option value="es">Spanish</option>
+                </select>
+            </div>
+
+            <div class="audio-visualizer" id="vizInterviewer">
+                <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+            </div>
+
+            <div class="content-boxes">
+                <div class="content-box">
+                    <div class="box-label">Original Speech (Interpreter) <i class="fas fa-language"></i></div>
+                    <div class="text-content" id="origInterviewer">...</div>
+                </div>
+                <div class="content-box">
+                    <div class="box-label">Your Verified Translation <i class="far fa-copy"></i></div>
+                    <div class="text-content" id="verInterviewer">...</div>
+                </div>
+            </div>
+
+            <div class="stats-line">
+                <div style="display: flex; align-items: center; gap: 5px;">Confidence Score <i class="fas fa-info-circle"></i></div>
+                <div class="progress-container"><div class="progress-fill" id="confBarInterviewer"></div></div>
+                <div id="confValInterviewer">0%</div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-stop" id="btnInterviewer"><i class="fas fa-microphone"></i> START MONITORING</button>
+                <button class="btn btn-reset" onclick="resetPanel('Interviewer')"><i class="fas fa-redo"></i> Reset</button>
+            </div>
+        </div>
+
+        <!-- Panel: To Candidate -->
+        <div class="card candidate" id="panelCandidate">
+            <div class="card-header">
+                <div class="monitor-title">
+                    <i class="fas fa-user"></i>
+                    <div>
+                        <div style="font-weight: bold;">Monitoring: To Candidate</div>
+                        <div style="font-size: 0.7rem; color: var(--text-dim);">Verify what the interpreter is telling the candidate</div>
+                    </div>
+                </div>
+                <div class="id-tag">ID: INT-TO-CH</div>
+            </div>
+
+            <div class="verify-lang">
+                <div style="font-size: 0.75rem; margin-bottom: 8px;">Verify in this language:</div>
+                <select class="lang-select" id="langCandidate">
+                    <option value="en" selected>English</option>
+                    <option value="hi">Hindi</option>
+                    <option value="ja">Japanese</option>
+                    <option value="es">Spanish</option>
+                </select>
+            </div>
+
+            <div class="audio-visualizer" id="vizCandidate">
+                <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+            </div>
+
+            <div class="content-boxes">
+                <div class="content-box">
+                    <div class="box-label">Original Speech (Interpreter) <i class="fas fa-language"></i></div>
+                    <div class="text-content" id="origCandidate">...</div>
+                </div>
+                <div class="content-box">
+                    <div class="box-label">Your Verified Translation <i class="far fa-copy"></i></div>
+                    <div class="text-content" id="verCandidate">...</div>
+                </div>
+            </div>
+
+            <div class="stats-line">
+                <div style="display: flex; align-items: center; gap: 5px;">Confidence Score <i class="fas fa-info-circle"></i></div>
+                <div class="progress-container"><div class="progress-fill" id="confBarCandidate"></div></div>
+                <div id="confValCandidate">0%</div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-stop" id="btnCandidate"><i class="fas fa-microphone"></i> START MONITORING</button>
+                <button class="btn btn-reset" onclick="resetPanel('Candidate')"><i class="fas fa-redo"></i> Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-grid">
+        <div class="card">
+            <div class="card-header">
+                <div style="font-weight: bold;"><i class="fas fa-list"></i> Recent Verification History</div>
+                <button class="btn-reset" onclick="window.location.href='/export_csv'" style="font-size: 0.75rem; padding: 5px 15px;">Export Log</button>
+            </div>
+            <div class="table-container">
+                <table id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Direction</th>
+                            <th>Detected Lang</th>
+                            <th>Your Language</th>
+                            <th>Confidence</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Entries added dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-status">
+        <div>Whisper Status: <span id="whisperStatus" style="color: var(--green-accent)">Running</span></div>
+        <div>All data is automatically logged to manual_audit_log.csv</div>
+    </div>
+
+    <script>
+        let recorders = { Interviewer: null, Candidate: null };
+        let chunks = { Interviewer: [], Candidate: [] };
+        let totalConf = 0;
+        let segmentCount = 0;
+        let detectedLangs = new Set();
+        let sessionStartTime = Date.now();
+
+        // Update Session Duration Timer
+        setInterval(() => {
+            let diff = Math.floor((Date.now() - sessionStartTime) / 1000);
+            let h = Math.floor(diff / 3600).toString().padStart(2, '0');
+            let m = Math.floor((diff % 3600) / 60).toString().padStart(2, '0');
+            let s = (diff % 60).toString().padStart(2, '0');
+            document.getElementById('sessionDuration').textContent = `${h}:${m}:${s}`;
+        }, 1000);
+
+        // Fetch System Stats (Modified to only update Whisper Status)
+        async function updateSystemStats() {
+            try {
+                const res = await fetch('/system_stats');
+                const data = await res.json();
+                document.getElementById('whisperStatus').textContent = data.whisper_status;
+            } catch (e) {}
+        }
+        setInterval(updateSystemStats, 5000);
+        updateSystemStats();
+
+        async function toggleMonitor(targetPerson) {
+            const btn = document.getElementById(`btn${targetPerson}`);
+            const viz = document.getElementById(`viz${targetPerson}`);
+            const langSelect = document.getElementById(`lang${targetPerson}`);
+
+            if (!recorders[targetPerson]) {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                recorders[targetPerson] = new MediaRecorder(stream);
+                chunks[targetPerson] = [];
+
+                recorders[targetPerson].ondataavailable = e => chunks[targetPerson].push(e.data);
+                
+                recorders[targetPerson].onstop = async () => {
+                    viz.classList.remove('recording');
+                    const audioBlob = new Blob(chunks[targetPerson], { type: 'audio/wav' });
+                    const fd = new FormData();
+                    fd.append('audio', audioBlob);
+                    fd.append('target_person', targetPerson);
+                    fd.append('target_lang', langSelect.value);
+
+                    try {
+                        const res = await fetch('/transcribe', { method: 'POST', body: fd });
+                        const data = await res.json();
+                        if (data.display_text) {
+                            updateUI(targetPerson, data);
+                        }
+                    } catch (e) {}
+                    recorders[targetPerson] = null;
+                };
+
+                recorders[targetPerson].start();
+                btn.innerHTML = `<i class="fas fa-stop"></i> STOP & VERIFY`;
+                viz.classList.add('recording');
+            } else {
+                recorders[targetPerson].stop();
+                btn.innerHTML = `<i class="fas fa-microphone"></i> START MONITORING`;
+            }
+        }
+
+        function updateUI(targetPerson, data) {
+            document.getElementById(`orig${targetPerson}`).textContent = data.original;
+            document.getElementById(`ver${targetPerson}`).textContent = data.display_text;
+            
+            const confInt = parseInt(data.confidence);
+            document.getElementById(`confBar${targetPerson}`).style.width = data.confidence;
+            document.getElementById(`confVal${targetPerson}`).textContent = data.confidence;
+
+            // Update Analytics (Internal state kept, UI elements removed)
+            segmentCount++;
+            totalConf += confInt;
+            detectedLangs.add(data.detected_lang);
+
+            // Add to Table
+            const tbody = document.getElementById('historyTable').querySelector('tbody');
+            const row = tbody.insertRow(0);
+            row.innerHTML = `
+                <td>${data.timestamp}</td>
+                <td><i class="fas ${targetPerson === 'Interviewer' ? 'fa-arrow-left' : 'fa-arrow-right'}"></i> To ${targetPerson}</td>
+                <td>${data.detected_lang}</td>
+                <td>${data.target_lang}</td>
+                <td>${data.confidence}</td>
+                <td style="color: var(--green-accent)"><i class="fas fa-check-circle"></i> VERIFIED</td>
+            `;
+        }
+
+        function resetPanel(targetPerson) {
+            document.getElementById(`orig${targetPerson}`).textContent = "...";
+            document.getElementById(`ver${targetPerson}`).textContent = "...";
+            document.getElementById(`confBar${targetPerson}`).style.width = "0%";
+            document.getElementById(`confVal${targetPerson}`).textContent = "0%";
+        }
+
+        document.getElementById('btnInterviewer').onclick = () => toggleMonitor('Interviewer');
+        document.getElementById('btnCandidate').onclick = () => toggleMonitor('Candidate');
+    </script>
+</body>
+</html>

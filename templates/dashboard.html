@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Past Interviews</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body style="display: block; padding: 20px;">
+    <div style="max-width: 1000px; margin: 0 auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1>Interview History</h1>
+            <div>
+                <a href="/" style="text-decoration: none; color: #1a73e8; margin-right: 20px;">Start New Interview</a>
+                <a href="/logout" style="text-decoration: none; color: #d93025;">Logout</a>
+            </div>
+        </div>
+
+        <div style="margin-top: 30px;">
+            {% if sessions %}
+                {% for session in sessions %}
+                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <h3>Candidate: {{ session.candidate_name }}</h3>
+                        <span style="color: #666;">{{ session.created_at }}</span>
+                    </div>
+                    <div style="margin: 15px 0;">
+                        <strong>Confidence Score: {{ session.confidence_score }}/100</strong>
+                        <p>{{ session.report.summary }}</p>
+                    </div>
+                    <details>
+                        <summary style="cursor: pointer; color: #1a73e8;">View Full Report & Transcript</summary>
+                        <div style="margin-top: 15px; background: #f9f9f9; padding: 15px; border-radius: 4px;">
+                            <h4>Consistency:</h4> <p>{{ session.report.consistency }}</p>
+                            <h4>Red Flags:</h4> <p>{{ session.report.red_flags }}</p>
+                            <hr>
+                            <h4>Transcript:</h4>
+                            {% for msg in session.transcript %}
+                                <p><strong>{{ msg.role }}:</strong> {{ msg.original }} <br> <small style="color: #666;">({{ msg.translated }})</small></p>
+                            {% endfor %}
+                        </div>
+                    </details>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p>No past interviews found.</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

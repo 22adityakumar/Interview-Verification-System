@@ -1,0 +1,12 @@
+flask
+flask-cors
+groq
+setuptools-rust
+deep-translator
+flask-socketio
+google-generativeai
+python-dotenv
+supabase
+gunicorn
+gevent-websocket
+psutil
